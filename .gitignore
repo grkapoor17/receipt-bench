@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.env
+
+# downloaded datasets, images and cached API responses
+data/
+cache/

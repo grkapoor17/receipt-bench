@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "receipt-bench"
+version = "0.1.0"
+description = "Receipt extraction pipelines (Textract, Claude repair) with deterministic totals checks, and a benchmark to compare them."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Gautam Kapoor" }]
+keywords = ["receipts", "document-ai", "ocr", "llm", "evals", "benchmark", "textract", "claude"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.optional-dependencies]
+textract = ["boto3>=1.35"]
+claude = ["anthropic>=2.9", "Pillow>=10"]
+all = ["receipt-bench[textract,claude]"]
+dev = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://github.com/grkapoor17/receipt-bench"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/receipt_bench"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

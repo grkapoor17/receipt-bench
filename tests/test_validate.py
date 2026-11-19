@@ -73,5 +73,15 @@ def test_tax_included_with_wrong_tax_fails():
     assert totals_mismatch(r)
 
 
+def test_small_unit_currencies_allow_rounded_totals():
+    # Indonesian receipts round the total to the nearest 100-500 rupiah
+    r = receipt([618490.0], 618490.0, total_tax=61849.0, total_amount=680500.0)
+    assert totals_mismatch(r)  # no currency: 161 off is too much
+    r["currency"] = "IDR"
+    assert adds_up(r)
+    r["total_amount"] = 690000.0
+    assert totals_mismatch(r)
+
+
 def test_missing_fields_count_as_zero():
     assert adds_up({"items": [], "total_amount": None})

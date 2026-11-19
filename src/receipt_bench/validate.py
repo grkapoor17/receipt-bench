@@ -12,6 +12,13 @@ TOLERANCE = 0.01
 # items - discounts + tax + tip vs printed total: off by less than 1 is fine
 # (rounding on per-line tax, cash rounding, etc.)
 TOTAL_TOLERANCE = 1.00
+# currencies with small units, where totals are rounded to tens or hundreds
+# (e.g. Indonesian receipts round to the nearest 100-500 rupiah)
+TOTAL_TOLERANCE_BY_CURRENCY = {"IDR": 500.0, "VND": 1000.0, "KRW": 100.0}
+
+
+def total_tolerance(receipt: Dict[str, Any]) -> float:
+    return TOTAL_TOLERANCE_BY_CURRENCY.get((receipt.get("currency") or "").upper(), TOTAL_TOLERANCE)
 
 
 def _num(value: Any) -> float:
@@ -40,7 +47,8 @@ def totals_mismatch(receipt: Dict[str, Any]) -> bool:
     True when the reading doesn't reconcile:
     - the items must match the subtotal (when there is one), before or after
       receipt-level discounts, AND
-    - discounted items + tax + tip must be within TOTAL_TOLERANCE of the total.
+    - discounted items + tax + tip must be within total_tolerance() of the total
+      (1.00, or more for small-unit currencies such as IDR).
     """
     items_total = items_sum(receipt)
     after_discounts = items_total - discount_amount(receipt, items_total)
@@ -53,13 +61,13 @@ def totals_mismatch(receipt: Dict[str, Any]) -> bool:
             if min(abs(items_total - gross), abs(after_discounts - gross)) >= TOLERANCE:
                 return True
         total = after_discounts + _num(receipt.get("tip"))
-        return abs(total - _num(receipt.get("total_amount"))) >= TOTAL_TOLERANCE
+        return abs(total - _num(receipt.get("total_amount"))) >= total_tolerance(receipt)
     if total_net is not None:
         net = _num(total_net)
         if min(abs(items_total - net), abs(after_discounts - net)) >= TOLERANCE:
             return True
     total = after_discounts + _num(receipt.get("total_tax")) + _num(receipt.get("tip"))
-    return abs(total - _num(receipt.get("total_amount"))) >= TOTAL_TOLERANCE
+    return abs(total - _num(receipt.get("total_amount"))) >= total_tolerance(receipt)
 
 
 def adds_up(receipt: Dict[str, Any]) -> bool:

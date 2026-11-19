@@ -14,7 +14,7 @@ The code is the extraction layer from [SplitNShare](https://splitnshare.ai), an 
 | | |
 |---|---|
 | Textract parser, totals checks, Claude repair, two pipelines | ✅ |
-| Dataset (CORD + SROIE + hand-labelled receipts) | 🚧 |
+| Datasets: CORD v2 loader; private set of 80 hand-checked real-world receipts | ✅ |
 | More pipelines (Claude direct, GPT, Gemini, an open model) | 🚧 |
 | Metrics: field accuracy, line-item F1, totals pass rate, p50/p95 latency, $/doc | 🚧 |
 | CI eval gate on a 20-receipt subset | 🚧 |
@@ -22,7 +22,7 @@ The code is the extraction layer from [SplitNShare](https://splitnshare.ai), an 
 ## Install
 
 ```bash
-pip install -e ".[all]"   # boto3 + anthropic + Pillow
+pip install -e ".[all]"   # boto3 + anthropic + Pillow + pyarrow
 ```
 
 ## Usage
@@ -52,6 +52,20 @@ if not adds_up(receipt):
 
 Credentials come from the usual places: AWS via the boto3 credential chain, Anthropic via `ANTHROPIC_API_KEY`.
 
+## Datasets
+
+Every dataset is written in the same layout (`labels/<id>.json` + `images/`), and each label lists the fields it actually labels, so a source without vendor or date labels isn't graded on them.
+
+**CORD v2:** 1,000 Indonesian receipts with line items ([clovaai/cord](https://github.com/clovaai/cord), Park et al. 2019, CC-BY-4.0).
+
+```bash
+python -m receipt_bench.datasets.cord --split test --out data/cord   # 100 receipts
+```
+
+The loader normalises CORD's mixed number formats (`28.182`, `Rp 165000.00`, `9.999,99`), handles tax-inclusive pricing, and records whether each label reconciles. On the test split, 97 of 100 do; the other 3 are inconsistent in the source labels and are kept but marked.
+
+**Private real-world set:** 80 receipts (US, Mexico, India) from the SplitNShare author's own bills, with item prices checked by a person when the bill was split. Labels record what is printed: tips added afterwards, handwritten amounts and cash-vs-card variants are noted, not labelled. These images contain personal details, so only aggregate results are published.
+
 ## Development
 
 ```bash
@@ -64,4 +78,4 @@ The tests never call AWS or Anthropic.
 
 ## License
 
-MIT
+MIT. CORD v2 is © its authors, CC-BY-4.0; it is downloaded at runtime and not redistributed here.

@@ -55,5 +55,23 @@ def test_no_subtotal_skips_the_subtotal_check():
     assert adds_up(receipt([4.00, 6.00], None, total_tax=0.80, total_amount=10.80))
 
 
+def test_tax_included_prices():
+    # Mexico: items include 16% IVA; printed subtotal is pre-tax
+    r = receipt([500.00, 500.00], 862.07, total_tax=137.93, total_amount=1000.00)
+    assert totals_mismatch(r)  # read as tax-on-top, it doesn't add up
+    r["tax_included"] = True
+    assert adds_up(r)
+    r["tip"] = 100.00
+    assert totals_mismatch(r)  # a tip that isn't in the printed total
+    r["total_amount"] = 1100.00
+    assert adds_up(r)
+
+
+def test_tax_included_with_wrong_tax_fails():
+    r = receipt([500.00, 500.00], 862.07, total_tax=120.00, total_amount=1000.00)
+    r["tax_included"] = True
+    assert totals_mismatch(r)
+
+
 def test_missing_fields_count_as_zero():
     assert adds_up({"items": [], "total_amount": None})

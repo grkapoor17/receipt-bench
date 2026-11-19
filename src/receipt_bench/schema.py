@@ -25,7 +25,14 @@ class Discount(TypedDict):
     amount: float  # positive
 
 
-class Receipt(TypedDict):
+class _ReceiptOptional(TypedDict, total=False):
+    # True when item prices already include tax (VAT/IVA/GST-inclusive pricing,
+    # common in Mexico, Europe, India): items then add up to the total, the
+    # printed subtotal is the pre-tax amount, and total_tax is informational.
+    tax_included: bool
+
+
+class Receipt(_ReceiptOptional):
     items: List[Item]
     total_net: Optional[float]  # printed subtotal; None = no subtotal to check
     total_tax: float

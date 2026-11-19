@@ -16,7 +16,7 @@ The code is the extraction layer from [SplitNShare](https://splitnshare.ai), an 
 | Textract parser, totals checks, Claude repair, two pipelines | ✅ |
 | Datasets: CORD v2 loader; private set of 80 hand-checked real-world receipts | ✅ |
 | More pipelines (Claude direct, GPT, Gemini, an open model) | 🚧 |
-| Metrics: field accuracy, line-item F1, totals pass rate, p50/p95 latency, $/doc | 🚧 |
+| Scorer: fully-correct rate, field accuracy, line-item F1, totals-check pass / miss / false-alarm rates, latency, cost | ✅ |
 | CI eval gate on a 20-receipt subset | 🚧 |
 
 ## Install
@@ -65,6 +65,20 @@ python -m receipt_bench.datasets.cord --split test --out data/cord   # 100 recei
 The loader normalises CORD's mixed number formats (`28.182`, `Rp 165000.00`, `9.999,99`), handles tax-inclusive pricing, and records whether each label reconciles. On the test split, 97 of 100 do; the other 3 are inconsistent in the source labels and are kept but marked.
 
 **Private real-world set:** 80 receipts (US, Mexico, India) from the SplitNShare author's own bills, with item prices checked by a person when the bill was split. Labels record what is printed: tips added afterwards, handwritten amounts and cash-vs-card variants are noted, not labelled. These images contain personal details, so only aggregate results are published.
+
+## Scoring
+
+```bash
+python -m receipt_bench.score --labels data/cord/test --preds runs/a --preds runs/b   # side-by-side table
+```
+
+A prediction directory holds one `<id>.json` per receipt (a Receipt, or `{"receipt", "latency_s", "cost_usd"}`). The headline metric is strict, because a bill split needs every price on the right item:
+
+- **Fully correct**: every labelled amount is right to the cent (subtotal, tax, tip, total, discounts) and every line item matches on price *and* name. Small OCR typos in a name are fine; a price on the wrong item is not.
+- **Line items**: rows with the same name are combined on both sides first (three "Cola 2.95" lines and one "Cola ×3 8.85" row are the same reading), and $0 modifier lines are ignored. Then precision / recall / F1, plus an amounts-only F1.
+- **The totals check, as a detector**: *passes totals check*; *wrong despite passing* (errors the check can't see, so the ones that reach users); *right despite failing* (false alarms that trigger an unnecessary LLM re-read).
+- **Fields**: vendor (fuzzy), date (format- and dd/mm-tolerant), currency. A field is graded only when the dataset labels it and the receipt prints it.
+- Receipts whose own label doesn't reconcile are skipped (`--keep-unreconciled` to include them).
 
 ## Development
 

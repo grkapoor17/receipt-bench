@@ -15,7 +15,8 @@ The code is the extraction layer from [SplitNShare](https://splitnshare.ai), an 
 |---|---|
 | Textract parser, totals checks, Claude repair, two pipelines | ✅ |
 | Datasets: CORD v2 loader; private set of 80 hand-checked real-world receipts | ✅ |
-| More pipelines (Claude direct, GPT, Gemini, an open model) | 🚧 |
+| Runner: Textract, production repair, Claude / OpenAI / Gemini reading the image directly | ✅ |
+| First full results | 🚧 |
 | Scorer: fully-correct rate, field accuracy, line-item F1, totals-check pass / miss / false-alarm rates, latency, cost | ✅ |
 | CI eval gate on a 20-receipt subset | 🚧 |
 
@@ -65,6 +66,15 @@ python -m receipt_bench.datasets.cord --split test --out data/cord   # 100 recei
 The loader normalises CORD's mixed number formats (`28.182`, `Rp 165000.00`, `9.999,99`), handles tax-inclusive pricing, and records whether each label reconciles. On the test split, 97 of 100 do; the other 3 are inconsistent in the source labels and are kept but marked.
 
 **Private real-world set:** 80 receipts (US, Mexico, India) from the SplitNShare author's own bills, with item prices checked by a person when the bill was split. Labels record what is printed: tips added afterwards, handwritten amounts and cash-vs-card variants are noted, not labelled. These images contain personal details, so only aggregate results are published.
+
+## Running
+
+```bash
+python -m receipt_bench.run --dry-run --dataset data/cord/test --pipeline claude:claude-haiku-5-5   # plan + cost estimate, no calls
+python -m receipt_bench.run --dataset data/cord/test --pipeline textract --pipeline openai:gpt-6.2-sol --max-cost 5
+```
+
+Pipelines: `textract`, `textract+repair` (the production setup), and `claude:<model>`, `openai:<model>`, `gemini:<model>`, which read the image directly. Every LLM gets the same prompt (`prompt.py`), the same image bytes and the same JSON schema, at its provider's default reasoning settings, with no automatic fallback to another model. Each call records latency, token usage and cost (`pricing.py`). Textract responses are cached so the two Textract pipelines pay once per page. Runs resume where they stopped, and `--max-cost` caps the spend. Keys come from the environment or a `.env` file.
 
 ## Scoring
 

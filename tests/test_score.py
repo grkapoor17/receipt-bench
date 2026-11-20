@@ -50,6 +50,16 @@ def test_vendor_similarity(gold, pred, ok):
     assert (sc.similarity(gold, pred) >= sc.VENDOR_THRESHOLD) is ok
 
 
+def test_bracketed_modifiers_dont_split_a_dish():
+    gold = sc.combine_items([{"description": "Taco Platter", "total_amount": 29.0}])
+    pred = sc.combine_items([{"description": "Taco Platter (Shrimp, Chicken)", "total_amount": 11.0},
+                             {"description": "Taco Platter (Shrimp)", "total_amount": 6.0},
+                             {"description": "Taco Platter [Cod, Pork]", "total_amount": 12.0}])
+    assert len(pred) == 1 and sc.match_items(gold, pred) == 1
+    assert sc.item_key("(TA) NASI GORENG") == "nasi goreng"
+    assert sc.item_key("(EX)") == "ex"  # nothing left outside the brackets: keep the whole name
+
+
 def test_non_latin_names_are_kept_apart():
     rows = sc.combine_items([{"description": "双拼", "total_amount": 22.99},
                              {"description": "红烧豆腐", "total_amount": 17.99}])

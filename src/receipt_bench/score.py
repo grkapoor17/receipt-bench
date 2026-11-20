@@ -118,6 +118,16 @@ def dates_equal(gold: Any, pred: Any) -> bool:
     return normalize_text(gold) == normalize_text(pred) != ""
 
 
+def item_key(description: Any) -> str:
+    """
+    Name used to combine repeated rows. Bracketed modifiers are ignored, so
+    "Taco Platter (Shrimp, Chicken)" and "Taco Platter" are the same dish.
+    """
+    text = str(description or "")
+    base = normalize_text(re.sub(r"\([^)]*\)|\[[^\]]*\]", " ", text))
+    return base or normalize_text(text)
+
+
 def combine_items(items: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Merge rows with the same normalised name, summing amounts (first-seen order).
@@ -126,7 +136,7 @@ def combine_items(items: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     rows: Dict[str, Dict[str, Any]] = {}
     for i in items or []:
-        key = normalize_text(i.get("description"))
+        key = item_key(i.get("description"))
         row = rows.setdefault(key, {"name": i.get("description") or "", "amount": 0.0})
         row["amount"] = round(row["amount"] + _num(i.get("total_amount")), 2)
     return [r for r in rows.values() if r["amount"] != 0]

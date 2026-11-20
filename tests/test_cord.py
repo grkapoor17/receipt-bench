@@ -68,7 +68,7 @@ def test_priced_modifiers_and_item_discounts_become_rows():
     })
     rows = [(i["description"], i["total_amount"]) for i in receipt["items"]]
     assert rows == [("MILK TEA", 25000.0), ("Extra Jelly", 4000.0), ("BLUS WANITA", 120000.0),
-                    ("SHOPPING BAG", 880.0), ("Discount", -880.0), ("NASI", 10000.0), ("Discount", -2000.0)]
+                    ("SHOPPING BAG", 0.0), ("NASI", 10000.0), ("Discount", -2000.0)]
     assert adds_up
 
 

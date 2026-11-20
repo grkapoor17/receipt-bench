@@ -120,21 +120,24 @@ def to_receipt(gt_parse: Dict[str, Any]) -> Tuple[Receipt, bool]:
             total = unit * qty
         if total is None:
             continue  # unpriced line (e.g. a section header)
-        items.append({"description": _name(m.get("nm")), "quantity": qty,
-                      "unit_price": unit if unit is not None else (total / qty if qty else total),
-                      "total_amount": total})
+        main = {"description": _name(m.get("nm")), "quantity": qty,
+                "unit_price": unit if unit is not None else (total / qty if qty else total),
+                "total_amount": total}
+        items.append(main)
         for sub in _as_list(m.get("sub")):
             sub_price = parse_amount(sub.get("price")) if isinstance(sub, dict) else None
             if sub_price:
                 sub_qty = parse_count(sub.get("cnt")) or 1.0
                 items.append({"description": _name(sub.get("nm")), "quantity": sub_qty,
                               "unit_price": sub_price / sub_qty, "total_amount": sub_price})
-        # item discounts are an amount ("-85,500") or a percentage ("100%")
+        # item discounts are a percentage ("100%": a free bag) folded into the
+        # item's own price, or a printed amount ("-85,500") kept as its own row
         raw_discount = m.get("discountprice")
         item_discount = parse_amount(raw_discount)
         if item_discount and "%" in str(raw_discount):
-            item_discount = total * item_discount / 100.0
-        if item_discount:
+            main["total_amount"] = round(total * (1 - item_discount / 100.0), 2)
+            main["unit_price"] = main["total_amount"] / qty if qty else main["total_amount"]
+        elif item_discount:
             items.append({"description": "Discount", "quantity": 1.0,
                           "unit_price": -abs(item_discount), "total_amount": -abs(item_discount)})
     receipt["items"] = items

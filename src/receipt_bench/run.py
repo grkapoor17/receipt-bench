@@ -35,6 +35,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from . import claude, textract
 from .datasets import load_labels
+from .images import prepare_image
 from .pricing import PRICES, TEXTRACT_ANALYZE_EXPENSE_PER_PAGE, token_cost
 from .providers import LLMResult
 from .validate import totals_mismatch
@@ -127,8 +128,11 @@ class TextractCache:
                     import boto3
 
                     self.client = boto3.client("textract", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+        # same shrinking the LLM pipelines get: AnalyzeExpense rejects images over
+        # 5 MB sent as bytes (a few CORD PNGs are 10-12 MB)
+        data, _ = prepare_image(image_bytes)
         started = time.time()
-        response = textract.analyze_expense(image_bytes, client=self.client)
+        response = textract.analyze_expense(data, client=self.client)
         entry = {"response": response, "latency_s": round(time.time() - started, 2)}
         with open(path + ".part", "w") as f:
             json.dump(entry, f, default=str)

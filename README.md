@@ -41,7 +41,7 @@ The code is the extraction layer from [SplitNShare](https://splitnshare.ai), an 
 
 What stands out:
 
-- **Some wrong readings add up perfectly, so a totals check can't catch them.** On Indonesian receipts, `28.182` means 28,182 rupiah. Reading it as 28.182 shrinks every number by the same factor of 1,000, and the receipt still reconciles. That accounts for 7 of production's 10 CORD misses. A tip printed only on page two of a payment-app receipt is missed the same way.
+- **Some wrong readings add up perfectly, so a totals check can't catch them.** On Indonesian receipts, `28.182` means 28,182 rupiah. Reading it as 28.182 shrinks every number by the same factor of 1,000, and the receipt still reconciles. That accounts for 17 of production's 21 CORD misses. A tip printed only on page two of a payment-app receipt is missed the same way.
 - **Cheap models fail differently.** Haiku's errors mostly still add up (silent errors), while Flash-Lite's mostly trip the totals check (false alarms that trigger an unnecessary second read).
 - **The models audited the labels.** Wherever at least 5 of the 8 LLMs agreed on a value that differed from the label, the photo was checked. That found 7 label errors, all fixed before these numbers.
 

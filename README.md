@@ -1,6 +1,6 @@
 # receipt-bench
 
-Receipt extraction pipelines, deterministic totals checks, and (in progress) a public benchmark comparing OCR and LLM approaches on accuracy, latency and cost.
+A benchmark of 10 receipt-extraction pipelines (AWS Textract, Claude, GPT and Gemini) on 148 labelled receipts, scored on whether every person's share of the bill comes out right, plus latency and cost. Also the extraction code itself: parsers, deterministic totals checks and an LLM repair step.
 
 The code is the extraction layer from [SplitNShare](https://splitnshare.ai), an iOS bill-splitting app. Users there split a bill item by item, so every price has to be right. The production pipeline:
 
@@ -16,9 +16,36 @@ The code is the extraction layer from [SplitNShare](https://splitnshare.ai), an 
 | Textract parser, totals checks, Claude repair, two pipelines | ✅ |
 | Datasets: CORD v2 loader; private set of 80 hand-checked real-world receipts | ✅ |
 | Runner: Textract, production repair, Claude / OpenAI / Gemini reading the image directly | ✅ |
-| First full results | 🚧 |
-| Scorer: fully-correct rate, field accuracy, line-item F1, totals-check pass / miss / false-alarm rates, latency, cost | ✅ |
+| Scorer: split-correct, fully-correct, field accuracy, line-item F1, totals-check pass / miss / false-alarm rates, latency, cost | ✅ |
+| First full results (November 2026) | ✅ |
 | CI eval gate on a 20-receipt subset | 🚧 |
+
+## Results (November 2026)
+
+148 graded receipts: 80 real-world receipts from the US, Mexico and India (private set), and the first 70 receipts of the CORD v2 test split (Indonesia; 2 skipped because their source labels don't add up). One run per pipeline, standard API pricing, each provider at its default reasoning settings.
+
+**Split-correct**: every line item has the right price on the right item, and the grand total is right, so every person's share comes out right.
+
+| Pipeline | Split-correct, all 148 | Real-world (80) | CORD (68) | Wrong but passed the totals check | Median latency | Cost / receipt |
+|---|---|---|---|---|---|---|
+| Gemini 3.8 Flash | **96.6%** | 96.2% | 97.1% | 5 | 10.3 s | $0.0069 |
+| Claude Opus 5.5 | **95.9%** | 95.0% | 97.1% | 6 | 6.8 s | $0.0306 |
+| GPT-6.2 Sol | **95.9%** | 95.0% | 97.1% | 4 | 7.2 s | $0.0099 |
+| Gemini 4 Argon | 95.3% | 93.8% | 97.1% | 7 | 9.2 s | $0.0089 |
+| Claude Sonnet 5.5 | 91.9% | 93.8% | 89.7% | 12 | 5.7 s | $0.0163 |
+| GPT-6 Luna | 91.2% | 91.2% | 91.2% | 10 | 9.3 s | $0.0007 |
+| Gemini 3.5 Flash-Lite | 91.2% | 90.0% | 92.7% | 7 | 3.0 s | $0.0017 |
+| Claude Haiku 5.5 | 89.9% | 90.0% | 89.7% | 13 | 5.6 s | $0.0010 |
+| Textract + Claude Opus 5.5 repair (production) | 81.1% | 91.2% | 69.1% | 25 | 3.6 s | $0.0201 |
+| Textract only | 66.9% | 75.0% | 57.4% | 21 | 3.0 s | $0.0100 |
+
+What stands out:
+
+- **Some wrong readings add up perfectly, so a totals check can't catch them.** On Indonesian receipts, `28.182` means 28,182 rupiah. Reading it as 28.182 shrinks every number by the same factor of 1,000, and the receipt still reconciles. That accounts for 7 of production's 10 CORD misses. A tip printed only on page two of a payment-app receipt is missed the same way.
+- **Cheap models fail differently.** Haiku's errors mostly still add up (silent errors), while Flash-Lite's mostly trip the totals check (false alarms that trigger an unnecessary second read).
+- **The models audited the labels.** Wherever at least 5 of the 8 LLMs agreed on a value that differed from the label, the photo was checked. That found 7 label errors, all fixed before these numbers.
+
+Caveats: the prompt was adapted from a production prompt tuned on Claude; 80 and 68 receipts are small samples (one receipt is about 1.3 points); some real-world labels started from the production pipeline's own output, which, if anything, flatters production; latency includes up to 4 concurrent requests per pipeline.
 
 ## Install
 

@@ -9,7 +9,7 @@ description = "Receipt extraction pipelines (Textract, Claude repair) with deter
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{ name = "Gautam Kapoor" }]
 keywords = ["receipts", "document-ai", "ocr", "llm", "evals", "benchmark", "textract", "claude"]
 classifiers = [

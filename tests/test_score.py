@@ -183,5 +183,6 @@ def test_score_directory_and_summary(tmp_path):
     assert s["passes_check"] == round(1 / 3, 4) and s["silent_error_rate"] == 0.0
     assert s["false_alarm_rate"] == 0.0
     assert s["latency_s"]["p50"] == 2.0 and s["cost_usd"]["mean"] == 0.01
+    assert sc.score(str(tmp_path / "ds"), str(preds), limit=1)["summary"]["n"] == 1
     table = sc.markdown_table([report], ["demo"])
     assert "| **Split-correct** | 33.3% |" in table and "| Fully correct | 33.3% |" in table

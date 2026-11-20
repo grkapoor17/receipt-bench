@@ -299,8 +299,10 @@ def load_predictions(directory: str) -> Dict[str, Dict[str, Any]]:
     return preds
 
 
-def score(labels_dir: str, preds_dir: str, skip_unreconciled: bool = True) -> Dict[str, Any]:
-    labels = list(load_labels(labels_dir))
+def score(labels_dir: str, preds_dir: str, skip_unreconciled: bool = True,
+          limit: Optional[int] = None) -> Dict[str, Any]:
+    """limit: grade only the first N receipts (same order as `run --limit N`)."""
+    labels = list(load_labels(labels_dir))[:limit]
     skipped = [r["id"] for r in labels if skip_unreconciled and r.get("label_adds_up") is False]
     labels = [r for r in labels if r["id"] not in skipped]
     preds = load_predictions(preds_dir)
@@ -354,9 +356,11 @@ def main(argv: Optional[List[str]] = None) -> None:
     parser.add_argument("--json", help="write the full report(s) here")
     parser.add_argument("--keep-unreconciled", action="store_true",
                         help="also grade receipts whose own label doesn't add up")
+    parser.add_argument("--limit", type=int, help="grade only the first N receipts (match `run --limit`)")
     args = parser.parse_args(argv)
 
-    reports = [score(args.labels, p, skip_unreconciled=not args.keep_unreconciled) for p in args.preds]
+    reports = [score(args.labels, p, skip_unreconciled=not args.keep_unreconciled, limit=args.limit)
+               for p in args.preds]
     names = args.name or [os.path.basename(os.path.normpath(p)) for p in args.preds]
     print(markdown_table(reports, names))
     skipped = reports[0]["skipped_unreconciled_labels"]

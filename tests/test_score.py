@@ -115,6 +115,22 @@ def test_wrong_price_that_still_adds_up_is_a_silent_error():
     assert row["passes_check"] and not row["correct"] and row["silent_error"]
 
 
+def test_misfiled_fee_is_split_correct_but_not_fully_correct():
+    # a card surcharge read as tip: same total, same items, same shares
+    gold = receipt([("Burger", 12.0), ("Fries", 4.5)], total_tax=1.5, tip=3.0)
+    gold["tax_breakdown"] = [{"label": "Tax", "amount": 1.0}, {"label": "Card surcharge", "amount": 0.5}]
+    pred = dict(gold, total_tax=1.0, tip=3.5)
+    row = sc.score_receipt(label(gold), pred)
+    assert row["split_correct"] and not row["correct"]
+    assert row["passes_check"] and row["silent_error"] and not row["split_silent_error"]
+
+
+def test_wrong_total_or_swapped_prices_are_not_split_correct():
+    gold = receipt([("Burger", 12.0), ("Fries", 4.5)])
+    assert not sc.score_receipt(label(gold), receipt([("Burger", 4.5), ("Fries", 12.0)]))["split_correct"]
+    assert not sc.score_receipt(label(gold), dict(gold, total_amount=99.0))["split_correct"]
+
+
 def test_wrong_total_fails_the_check():
     pred = dict(GOLD, total_amount=99.0)
     row = sc.score_receipt(label(GOLD), pred)
@@ -168,4 +184,4 @@ def test_score_directory_and_summary(tmp_path):
     assert s["false_alarm_rate"] == 0.0
     assert s["latency_s"]["p50"] == 2.0 and s["cost_usd"]["mean"] == 0.01
     table = sc.markdown_table([report], ["demo"])
-    assert "| **Fully correct** | 33.3% |" in table
+    assert "| **Split-correct** | 33.3% |" in table and "| Fully correct | 33.3% |" in table

@@ -54,11 +54,13 @@ def totals_mismatch(receipt: Dict[str, Any]) -> bool:
     after_discounts = items_total - discount_amount(receipt, items_total)
     total_net = receipt.get("total_net")
     if receipt.get("tax_included"):
-        # prices include tax: the pre-tax subtotal + tax must give the items back,
+        # prices include tax: the printed subtotal is either pre-tax (subtotal +
+        # tax gives the items back) or already tax-inclusive (equals the items);
         # and items - discounts + tip must give the total
         if total_net is not None:
-            gross = _num(total_net) + _num(receipt.get("total_tax"))
-            if min(abs(items_total - gross), abs(after_discounts - gross)) >= TOLERANCE:
+            net = _num(total_net)
+            candidates = (net + _num(receipt.get("total_tax")), net)
+            if min(abs(x - c) for x in (items_total, after_discounts) for c in candidates) >= TOLERANCE:
                 return True
         total = after_discounts + _num(receipt.get("tip"))
         return abs(total - _num(receipt.get("total_amount"))) >= total_tolerance(receipt)

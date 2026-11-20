@@ -16,8 +16,10 @@ Per receipt:
   matched one-to-one on amount + similar name -> precision / recall / F1.
   Rows that come to 0 (free modifiers) are ignored on both sides.
   amounts_f1 matches on amount alone (ignores how names were read).
-- correct: every graded amount right and every item matched on name + amount
-  (items F1 = 1), i.e. safe to split
+- split_correct (headline): every item matched on name + amount and the grand
+  total right, i.e. every person's share comes out right. Tax / tip / fee /
+  discount classification doesn't matter here: a split shares those proportionally.
+- correct (strict): split_correct plus every graded amount field right
 - passes_check: the prediction passes validate.totals_mismatch
 - silent_error: passes the check but isn't correct (the check can't catch it);
   the summary also reports false alarms (fails the check but was correct)
@@ -200,7 +202,8 @@ def score_receipt(label: Dict[str, Any], pred: Optional[Dict[str, Any]]) -> Dict
     if pred is None:
         row["fields"] = {f: False for f in fields}
         row.update(items_matched=0, amounts_matched=0, n_gold_items=len(gold_items), n_pred_items=0,
-                   items_f1=0.0, amounts_f1=0.0, correct=False, passes_check=False, silent_error=False)
+                   items_f1=0.0, amounts_f1=0.0, correct=False, split_correct=False, passes_check=False,
+                   silent_error=False, split_silent_error=False)
         return row
 
     for f in fields:
@@ -227,9 +230,14 @@ def score_receipt(label: Dict[str, Any], pred: Optional[Dict[str, Any]]) -> Dict
     # charges the wrong person, so items must match on name AND amount
     amounts_ok = all(row["fields"][f] for f in fields if f in AMOUNT_FIELDS)
     row["correct"] = amounts_ok and matched == len(gold_items) == len(pred_items)
+    # what a bill split actually needs: every item's price on the right item, and
+    # the right grand total. Tax, tip, fees and order discounts are shared
+    # proportionally, so filing a surcharge as tip (or IVA as 0) moves no money.
+    row["split_correct"] = row["fields"].get("total_amount", True) and matched == len(gold_items) == len(pred_items)
     # judge the check with the label's currency: currency detection is graded separately
     row["passes_check"] = not totals_mismatch(dict(pred, currency=gold.get("currency")))
     row["silent_error"] = row["passes_check"] and not row["correct"]
+    row["split_silent_error"] = row["passes_check"] and not row["split_correct"]
     return row
 
 
@@ -258,9 +266,12 @@ def summarize(rows: List[Dict[str, Any]], runs: List[Dict[str, Any]]) -> Dict[st
     return {
         "n": n,
         "failed": sum(r["failed"] for r in rows),
+        "split_correct": round(sum(r["split_correct"] for r in rows) / n, 4) if n else None,
         "correct": round(sum(r["correct"] for r in rows) / n, 4) if n else None,
         "passes_check": round(passed / n, 4) if n else None,
-        # of the receipts that pass the check, how many are still wrong
+        # of the receipts that pass the check, how many would still split wrong
+        "split_silent_error_rate": round(sum(r["split_silent_error"] for r in rows) / passed, 4) if passed else None,
+        # of the receipts that pass the check, how many are still wrong in any field
         "silent_error_rate": round(sum(r["silent_error"] for r in rows) / passed, 4) if passed else None,
         # of the receipts that fail the check, how many were actually right
         "false_alarm_rate": (round(sum(r["correct"] and not r["passes_check"] for r in rows) / (n - passed), 4)
@@ -316,9 +327,11 @@ def markdown_table(reports: List[Dict[str, Any]], names: List[str]) -> str:
     s = [r["summary"] for r in reports]
     out = [line("", names), "|---|" + "---|" * len(names)]
     out.append(line("Receipts", [str(x["n"]) for x in s]))
-    out.append(line("**Fully correct**", [_pct(x["correct"]) for x in s]))
+    out.append(line("**Split-correct**", [_pct(x["split_correct"]) for x in s]))
+    out.append(line("Fully correct", [_pct(x["correct"]) for x in s]))
     out.append(line("Passes totals check", [_pct(x["passes_check"]) for x in s]))
-    out.append(line("Wrong despite passing", [_pct(x["silent_error_rate"]) for x in s]))
+    out.append(line("Splits wrong despite passing", [_pct(x["split_silent_error_rate"]) for x in s]))
+    out.append(line("Any field wrong despite passing", [_pct(x["silent_error_rate"]) for x in s]))
     out.append(line("Right despite failing", [_pct(x["false_alarm_rate"]) for x in s]))
     out.append(line("Line items F1", [_pct(x["items"]["f1"]) for x in s]))
     out.append(line("Line item amounts F1", [_pct(x["items"]["amounts_f1"]) for x in s]))

@@ -67,6 +67,13 @@ def test_tax_included_prices():
     assert adds_up(r)
 
 
+def test_tax_included_with_a_tax_inclusive_subtotal():
+    # "Subtotal 135.00 / Gran Total 135.00 / IVA incluido 18.62"
+    r = receipt([80.00, 55.00], 135.00, total_tax=18.62, total_amount=135.00)
+    r["tax_included"] = True
+    assert adds_up(r)
+
+
 def test_tax_included_with_wrong_tax_fails():
     r = receipt([500.00, 500.00], 862.07, total_tax=120.00, total_amount=1000.00)
     r["tax_included"] = True

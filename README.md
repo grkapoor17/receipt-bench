@@ -84,9 +84,10 @@ python -m receipt_bench.score --labels data/cord/test --preds runs/a --preds run
 
 A prediction directory holds one `<id>.json` per receipt (a Receipt, or `{"receipt", "latency_s", "cost_usd"}`). The headline metric is strict, because a bill split needs every price on the right item:
 
-- **Fully correct**: every labelled amount is right to the cent (subtotal, tax, tip, total, discounts) and every line item matches on price *and* name. Small OCR typos in a name are fine; a price on the wrong item is not.
+- **Split-correct** (headline): every line item matches on price *and* name, and the grand total is right, so every person's share comes out right. Small OCR typos in a name are fine; a price on the wrong item is not. How tax, tip, fees and order discounts are classified doesn't count here, because a split shares those proportionally.
+- **Fully correct** (strict): split-correct, and also every labelled amount field right to the cent (subtotal, tax, tip, discounts).
 - **Line items**: rows with the same name are combined on both sides first (three "Cola 2.95" lines and one "Cola ×3 8.85" row are the same reading), and $0 modifier lines are ignored. Then precision / recall / F1, plus an amounts-only F1.
-- **The totals check, as a detector**: *passes totals check*; *wrong despite passing* (errors the check can't see, so the ones that reach users); *right despite failing* (false alarms that trigger an unnecessary LLM re-read).
+- **The totals check, as a detector**: *passes totals check*; *splits wrong despite passing* (errors the check can't see, so the ones that reach users); *right despite failing* (false alarms that trigger an unnecessary LLM re-read).
 - **Fields**: vendor (fuzzy), date (format- and dd/mm-tolerant), currency. A field is graded only when the dataset labels it and the receipt prints it.
 - Receipts whose own label doesn't reconcile are skipped (`--keep-unreconciled` to include them).
 
